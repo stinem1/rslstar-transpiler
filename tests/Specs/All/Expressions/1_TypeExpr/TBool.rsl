@@ -1,0 +1,5 @@
+scheme TBool =
+    class
+        type
+            T = Bool
+    end

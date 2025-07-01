@@ -1,0 +1,5 @@
+scheme Lambda_Eq =
+    class
+        value
+            x : Bool = (-\ x: Bool :- {..}[1]) = (-\ x: Bool :- x)
+    end

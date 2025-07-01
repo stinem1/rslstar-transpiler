@@ -1,0 +1,7 @@
+scheme Distinct_Generic =
+    class
+        transition_system [TS]
+            variable
+                x[t: Int, t: Int] : Int
+        end
+    end

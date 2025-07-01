@@ -1,0 +1,6 @@
+scheme GenericReference =
+    class
+        value
+            x[t1: Int]: Int,
+            y: Int = x
+    end

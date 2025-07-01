@@ -1,0 +1,6 @@
+scheme Id =
+    class
+        type
+            T1 = Int,
+            T2 = T1
+    end

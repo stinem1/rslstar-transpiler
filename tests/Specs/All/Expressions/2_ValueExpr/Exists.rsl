@@ -1,0 +1,7 @@
+scheme Exists =
+    class
+        type
+            Range = {| i : Int :- i >= 0 /\ i < 3 |}
+
+        value b : Bool = exists x : Range :- x = 1
+    end

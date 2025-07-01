@@ -1,0 +1,36 @@
+scheme Example =
+    class
+        type 
+            A = Int,
+            B = {| x: Int :- x > 0 |},
+            C = array B of A 
+        value
+            x : Bool = {..}[1] = 1,
+            x : C = {..},
+            y : Bool = let x = {..}[1] in x = 1 /\ x = true end,
+            z : Bool = {. 1, true .},
+            w : Bool = if true then 1 else false end,
+            f: Int -> Int
+            g(x) is f(x)
+
+        axiom
+            [a1] r[.1.] = 1,
+            [a1] r[.1,2.] = 1
+
+        transition_system [TS]
+            variable
+                x: Int,
+                y[t : A, t: A] : Int
+            
+            init_constraint
+                x = 0,
+                (all x : A :- y[.x.] = 0)
+
+            transition_rules
+                x = 0 
+                ==> 
+                x' = 1
+
+        end
+
+end

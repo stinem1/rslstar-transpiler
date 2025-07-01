@@ -1,0 +1,5 @@
+scheme InCompatibleTypesArray =
+    class
+        value
+            x : array Int of Int = {.1, true.}
+    end

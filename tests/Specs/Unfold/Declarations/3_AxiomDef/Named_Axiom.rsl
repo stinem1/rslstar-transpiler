@@ -1,0 +1,5 @@
+scheme Named_Axiom =
+    class
+        axiom
+            [name] true
+    end

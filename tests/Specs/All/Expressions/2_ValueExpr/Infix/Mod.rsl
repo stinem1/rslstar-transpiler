@@ -1,0 +1,4 @@
+scheme Mod =
+    class
+        value x: Int = 1 \ 1
+    end

@@ -1,0 +1,7 @@
+scheme UnexpectedArgumentFunction =
+    class
+        value
+            f: Int -> Int
+            f(x) is x,
+            y: Int = f(1,2)
+    end

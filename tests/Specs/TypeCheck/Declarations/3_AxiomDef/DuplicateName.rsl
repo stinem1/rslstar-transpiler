@@ -1,0 +1,6 @@
+scheme DuplicateName =
+    class
+        axiom
+            [a1] true,
+            [a1] false
+    end

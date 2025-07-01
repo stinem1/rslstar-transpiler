@@ -1,0 +1,15 @@
+scheme Single =
+    class
+        type
+            T1 == x1 | x2 | x3
+        transition_system [TS]
+            variable
+                x : Int,
+                z[t1: T1] : Bool,
+                w[t1: T1, t2: T1] : Int
+            init_constraint
+                x = 2,
+                all x : T1 :- z[.x.] = true,
+                all x, y : T1 :- w[.x, y.] = 2
+        end
+    end

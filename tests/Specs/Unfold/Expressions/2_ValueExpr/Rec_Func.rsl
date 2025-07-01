@@ -1,0 +1,8 @@
+scheme Rec_Func =
+    class
+        value
+            f : Int -> Int
+            f(x) is f(x),
+
+            y : Int = f(1)
+    end

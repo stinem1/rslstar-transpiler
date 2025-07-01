@@ -1,0 +1,356 @@
+%{
+open FSharp.Text.Parsing
+open FSharpPlus.Data
+open Util
+open AST
+
+// Auxiliary functions to create an AST node annotated with its span in the source file
+let mkNode (parseState: IParseState, v: 'a): Node<'a> =
+    { Span = mkSpan parseState.ResultRange; Value = v }
+
+let mkSubNode (parseState: IParseState, startIdx: int, endIdx: int, v: 'a): Node<'a> =
+    let startPos = parseState.InputStartPosition startIdx
+    let endPos = parseState.InputEndPosition endIdx
+    { Span = mkSpan (startPos, endPos); Value = v }
+
+let mkInfixNode(parseState: IParseState, lhs: Node<ValueExpr>, op: InfixOp, rhs: Node<ValueExpr>): Node<ValueExpr> =
+    mkNode(parseState, Infix (mkSubNode(parseState, 2, 2, op), lhs, rhs))
+
+let mkPrefixNode(parseState: IParseState, op: PrefixOp, expr: Node<ValueExpr>): Node<ValueExpr> =
+    mkNode(parseState, Prefix (mkSubNode(parseState, 1, 1, op), expr))
+
+// Called by the generated parser when it encounters a syntax error
+let parserErrorHandler (ctx: ParseErrorContext<_>): unit =
+    let startPos, endPos = ctx.ParseState.ResultRange
+    let span = mkSpan ctx.ParseState.ResultRange
+    raise (InvalidSyntax (
+        // FIXME: ResultRange appears to be bugged for the first token.
+        // This should not impact mkNode since scheme is the first token and has to appear.
+        (if span = (0u,0u) then (1u,1u) else span),
+        // FIXME: Since these lines are placed at the top of the generated Parser.fs 
+        // the CurrentToken cannot easily be translated to a tag.
+        Option.map string ctx.CurrentToken, 
+        ctx.ShiftTokens
+    ))
+
+let parse_error_rich = Some parserErrorHandler
+
+// Used for collecting definitions into a single declaration
+let mutable typeDefs = ResizeArray<Node<TypeDef>>()
+let mutable valueDefs = ResizeArray<Node<ValueDef>>()
+let mutable axiomDefs = ResizeArray<Node<AxiomDef>>()
+let mutable transitionSystemDecs = ResizeArray<TransitionSystemDec>()
+let mutable ltlAssertionDefs = ResizeArray<Node<LTLAssertionDef>>()
+
+let mutable variableDefs = ResizeArray<Node<VariableDef>>()
+let mutable initConstraintDefs = ResizeArray<Node<ValueExpr>>()
+let mutable ruleDefs = ResizeArray<Node<RuleExpr>>()
+%}
+
+// Keywords
+%token TYPE_BOOL TYPE_INT ALL ARRAY AXIOM
+%token CLASS ELSE END EXISTS IF IN
+%token INIT_CONSTRAINT IS LET LTL_ASSERTION
+%token OF SCHEME THEN TRANSITION_RULES
+%token TRANSITION_SYSTEM TYPE VALUE VARIABLE
+
+// Operators
+%token IMP OR AND NOT
+%token UNTIL GLOBAL FINALLY NEXT 
+%token NON_DET_CHOICE PRIORITY_CHOICE
+%token EQ NEQ GE LE GEQ LEQ
+%token PLUS MINUS BACK_SLASH STAR FORWARD_SLASH
+
+// Symbols
+%token LAMBDA COLON_DASH EQ_EQ TURNSTILE
+%token LONG_DOUBLE_RIGHT_ARROW TIMES
+%token RIGHT_ARROW BAR COLON COMMA
+
+// Brackets
+%token LEFT_SQUARE RIGHT_SQUARE
+%token LEFT_SQUARE_DOT RIGHT_SQUARE_DOT
+%token LEFT_PAREN RIGHT_PAREN 
+%token LEFT_DOUBLE_CURLY RIGHT_DOUBLE_CURLY 
+%token LEFT_CURLY_DOT RIGHT_CURLY_DOT
+
+// Literals
+%token <bool>   BOOL 
+%token <int>    INT 
+%token <string> IDENT
+%token <string> PRIME_IDENT
+
+%token EOF
+
+// Precedence and Associativity
+
+// Value Expressions
+%nonassoc QUANTIFIER
+%right IMP
+%right OR
+%right AND
+%right UNTIL
+%left EQ NEQ GE LE GEQ LEQ
+%left PLUS MINUS BACK_SLASH
+%left STAR FORWARD_SLASH
+%nonassoc POS NEG NOT GLOBAL FINALLY NEXT
+
+// Rule Expressions
+%nonassoc RULE_QUANTIFIER
+%right NON_DET_CHOICE
+%right PRIORITY_CHOICE
+
+%start scheme
+%type <AST.Scheme> scheme
+
+%%
+
+scheme: SCHEME ident EQ CLASS optDeclString END EOF {
+        let scheme =
+            { 
+                Id = $2
+                TypeDefs = List.ofSeq typeDefs
+                ValueDefs = List.ofSeq valueDefs 
+                AxiomDefs = List.ofSeq axiomDefs
+                TransitionSystemDecs = List.ofSeq transitionSystemDecs
+                LTLAssertionDefs = List.ofSeq ltlAssertionDefs 
+            }
+            
+        typeDefs <- ResizeArray()
+        valueDefs <- ResizeArray()
+        axiomDefs <- ResizeArray()
+        transitionSystemDecs <- ResizeArray()
+        ltlAssertionDefs <- ResizeArray()
+
+        scheme
+    }
+
+decl: 
+    | TYPE typeDefList                             {}
+    | VALUE valueDefList                           {}
+    | AXIOM axiomDefList                           {}
+    | TRANSITION_SYSTEM naming optTSDeclString END {
+        transitionSystemDecs.Add { 
+            Id = $2
+            VariableDefs = List.ofSeq variableDefs
+            InitConstraintDefs = List.ofSeq initConstraintDefs
+            TransitionRuleDefs = List.ofSeq ruleDefs
+        }
+
+        variableDefs <- ResizeArray()
+        initConstraintDefs <- ResizeArray()
+        ruleDefs <- ResizeArray()
+    }
+    | LTL_ASSERTION ltlAssertionDefList            {}
+
+tsDecl:
+    | VARIABLE variableDefList              {}
+    | INIT_CONSTRAINT initConstraintDefList {}
+    | TRANSITION_RULES ruleExpr             { ruleDefs.Add $2 }
+
+/*** Declarations ***/
+
+typeDef:
+    | ident                   { mkNode(parseState, Sort $1) }   
+    | ident EQ_EQ identChoice { mkNode(parseState, TypeDef.Variant ($1, $3)) }
+    | ident EQ typeExpr       { mkNode(parseState, Abbreviation ($1, $3)) }
+
+valueDef:
+    | singleTyping              { mkNode(parseState, ValueDef.Single ($1, None)) }
+    | singleTyping EQ valueExpr { mkNode(parseState, ValueDef.Single ($1, Some $3)) }
+    | ident COLON typeExprProduct RIGHT_ARROW typeExpr
+      ident LEFT_PAREN identList RIGHT_PAREN IS valueExpr {
+        let ty = mkSubNode(parseState, 3, 5, ($3, $5))
+        mkNode(parseState, ValueDef.Function ($1, ty, $6, $8, $11))
+    }
+    | ident LEFT_SQUARE singleTypingList RIGHT_SQUARE COLON typeExpr {
+        mkNode(parseState, ValueDef.Generic ($1, $3, $6))
+    }
+
+axiomDef: 
+    | valueExpr        { mkNode(parseState, { Name = None; Axiom = $1 }) }
+    | naming valueExpr { mkNode(parseState, { Name = Some $1; Axiom = $2 }) }
+
+variableDef:
+    | singleTyping { mkNode(parseState, VariableDef.Single $1) }
+    | ident LEFT_SQUARE singleTypingList RIGHT_SQUARE COLON typeExpr {
+        mkNode(parseState, VariableDef.Generic ($1, $3, $6))
+    }
+
+ltlAssertionDef: naming ident TURNSTILE valueExpr { mkNode(parseState, { Name = $1; TransitionSystem = $2; Assertion = $4 }) }
+
+naming: LEFT_SQUARE ident RIGHT_SQUARE { $2 }
+
+/*** Expressions ***/
+
+typeExpr:
+    | TYPE_BOOL                           { mkNode(parseState, TBool) }
+    | TYPE_INT                            { mkNode(parseState, TInt) }
+    | ident                               { mkNode(parseState, TId $1) }
+    | ARRAY typeExpr OF typeExpr          { mkNode(parseState, Array ($2, $4)) }
+    | LEFT_DOUBLE_CURLY 
+        singleTyping COLON_DASH valueExpr 
+      RIGHT_DOUBLE_CURLY                  { mkNode(parseState, Subtype ($2, $4)) }
+    | LEFT_PAREN typeExpr RIGHT_PAREN     { $2 }
+
+valueExpr:
+    | LAMBDA typingList COLON_DASH valueExpr %prec QUANTIFIER { mkNode(parseState, Lambda ($2, $4)) }
+    | quantifier typingList COLON_DASH valueExpr %prec QUANTIFIER {
+        mkNode(parseState, Quantified (mkSubNode(parseState, 1, 1, $1), $2, $4))
+    }
+    | valueExpr IMP valueExpr                              { mkInfixNode(parseState, $1, Imp, $3) }
+    | valueExpr OR valueExpr                               { mkInfixNode(parseState, $1, Or, $3) }
+    | valueExpr AND valueExpr                              { mkInfixNode(parseState, $1, And, $3) }
+    | valueExpr UNTIL valueExpr                            { mkInfixNode(parseState, $1, Until, $3) }
+
+    | valueExpr1 EQ valueExpr1                             { mkInfixNode(parseState, $1, Eq, $3) }
+    | valueExpr1 NEQ valueExpr1                            { mkInfixNode(parseState, $1, Neq, $3) }
+    | valueExpr1 GE valueExpr1                             { mkInfixNode(parseState, $1, Ge, $3) }
+    | valueExpr1 LE valueExpr1                             { mkInfixNode(parseState, $1, Le, $3) }
+    | valueExpr1 GEQ valueExpr1                            { mkInfixNode(parseState, $1, Geq, $3) }
+    | valueExpr1 LEQ valueExpr1                            { mkInfixNode(parseState, $1, Leq, $3) }
+    | valueExpr1                                           { $1 }
+valueExpr1:
+    | valueExpr1 PLUS valueExpr1                           { mkInfixNode(parseState, $1, Add, $3) }
+    | valueExpr1 MINUS valueExpr1                          { mkInfixNode(parseState, $1, Sub, $3) }
+    | valueExpr1 BACK_SLASH valueExpr1                     { mkInfixNode(parseState, $1, Mod, $3) }
+
+    | valueExpr1 STAR valueExpr1                           { mkInfixNode(parseState, $1, Mul, $3) }
+    | valueExpr1 FORWARD_SLASH valueExpr1                  { mkInfixNode(parseState, $1, Div, $3) }
+     
+    | PLUS valueExpr1                 %prec POS            { mkPrefixNode(parseState, Pos, $2) }
+    | MINUS valueExpr1                %prec NEG            { mkPrefixNode(parseState, Neg, $2) }
+    | NOT valueExpr1                                       { mkPrefixNode(parseState, Not, $2) }
+    | GLOBAL valueExpr1                                    { mkPrefixNode(parseState, Global, $2) }
+    | FINALLY valueExpr1                                   { mkPrefixNode(parseState, Finally, $2) }
+    | NEXT valueExpr1                                      { mkPrefixNode(parseState, Next, $2) }
+    
+    | valueExpr0 paramString                               { mkNode(parseState, ArrayApp ($1, $2)) }
+    | valueExpr0 LEFT_PAREN valueExprList RIGHT_PAREN      { mkNode(parseState, FunctionApp ($1, $3)) }
+    | valueExpr0                                           { $1 }
+valueExpr0:
+    | BOOL                                                 { mkNode(parseState, Bool (mkSubNode(parseState, 1, 1, $1))) }
+    | INT                                                  { mkNode(parseState, Int (mkSubNode(parseState, 1, 1, $1))) }
+    | ident                                                { mkNode(parseState, Id $1) }
+    | LEFT_CURLY_DOT optValueExprList RIGHT_CURLY_DOT      { mkNode(parseState, EnumeratedArray $2) }
+    | ident LEFT_SQUARE_DOT valueExprList RIGHT_SQUARE_DOT { mkNode(parseState, GenericApp ($1, $3)) }
+    | valueExpr0 COLON typeExpr                            { mkNode(parseState, Disambiguation ($1, $3)) }
+    | LET ident EQ valueExpr IN valueExpr END              { mkNode(parseState, Let ($2, $4, $6)) }
+    | IF valueExpr THEN valueExpr ELSE valueExpr END       { mkNode(parseState, If ($2, $4, $6)) }
+    | LEFT_PAREN valueExpr RIGHT_PAREN                     { $2 }
+
+quantifier: 
+    | ALL                { All } 
+    | EXISTS             { Exists }
+
+parameter: LEFT_SQUARE valueExpr RIGHT_SQUARE { $2 }
+
+ruleExpr:
+    | valueExpr LONG_DOUBLE_RIGHT_ARROW effectExprList                    { mkNode(parseState, GuardedCommand (None, $1, $3)) }
+    | naming valueExpr LONG_DOUBLE_RIGHT_ARROW effectExprList             { mkNode(parseState, GuardedCommand (Some $1, $2, $4)) }
+    | NON_DET_CHOICE typingList COLON_DASH ruleExpr %prec RULE_QUANTIFIER { mkNode(parseState, QuantifiedRule ($2, $4)) }
+    | ruleExpr NON_DET_CHOICE ruleExpr {
+        mkNode(parseState, Choice (mkSubNode(parseState, 2, 2, NonDeterministic), $1, $3))
+    }
+    | ruleExpr PRIORITY_CHOICE ruleExpr {
+        mkNode(parseState, Choice (mkSubNode(parseState, 2, 2, Priority), $1, $3))
+    }
+    | LEFT_PAREN ruleExpr RIGHT_PAREN                                     { $2 }
+
+effectExpr:
+    | effectVariable EQ valueExpr                                         { mkInfixNode(parseState, $1, Eq, $3) }
+    | ALL typingList COLON_DASH effectExpr {
+        mkNode(parseState, Quantified (mkSubNode(parseState, 1, 1, All), $2, $4))
+    }
+    | LEFT_PAREN effectExpr RIGHT_PAREN                                   { $2 }
+
+effectVariable:
+    | effectVariable0 paramString                                          { mkNode(parseState, ArrayApp ($1, $2)) }
+    | effectVariable0                                                      { $1 }
+effectVariable0:
+    | PRIME_IDENT                                                          { mkNode(parseState, Id (mkSubNode(parseState, 1, 1, $1))) }
+    | PRIME_IDENT LEFT_SQUARE_DOT valueExprList RIGHT_SQUARE_DOT { 
+        mkNode(parseState, GenericApp (mkSubNode(parseState, 1, 1, $1), $3)) 
+    }
+    | LEFT_PAREN effectVariable RIGHT_PAREN                                { $2 }
+
+typing: identList COLON typeExpr { mkNode(parseState, ($1, $3)) }
+
+singleTyping: ident COLON typeExpr { mkNode(parseState, ($1, $3)) }
+
+ident: IDENT { mkNode(parseState, $1) }
+
+/*** Sequences ***/
+
+optDeclString:
+    |                    {}
+    | decl optDeclString {}
+
+optTSDeclString:
+    |                        {}
+    | tsDecl optTSDeclString {}
+
+paramString:
+    | parameter             { NonEmptyList.singleton $1 }
+    | parameter paramString { NonEmptyList.cons $1 $2 }
+
+
+typeDefList:
+    | typeDef                   { typeDefs.Add $1 }
+    | typeDefList COMMA typeDef { typeDefs.Add $3 }
+
+valueDefList:
+    | valueDef                    { valueDefs.Add $1 }
+    | valueDefList COMMA valueDef { valueDefs.Add $3 }
+
+axiomDefList:
+    | axiomDef                    { axiomDefs.Add $1 }
+    | axiomDefList COMMA axiomDef { axiomDefs.Add $3 }
+
+variableDefList:
+    | variableDef                       { variableDefs.Add $1 }
+    | variableDefList COMMA variableDef { variableDefs.Add $3 }
+
+initConstraintDefList:
+    | valueExpr                             { initConstraintDefs.Add $1 }
+    | initConstraintDefList COMMA valueExpr { initConstraintDefs.Add $3 }
+
+ltlAssertionDefList:
+    | ltlAssertionDef                           { ltlAssertionDefs.Add $1 }
+    | ltlAssertionDefList COMMA ltlAssertionDef { ltlAssertionDefs.Add $3 }
+
+typingList:
+    | typing                  { NonEmptyList.singleton $1 }
+    | typing COMMA typingList { NonEmptyList.cons $1 $3 }
+
+valueExprList:
+    | valueExpr                     { NonEmptyList.singleton $1 }
+    | valueExpr COMMA valueExprList { NonEmptyList.cons $1 $3 }
+
+effectExprList:
+    | effectExpr                      { NonEmptyList.singleton $1 }
+    | effectExpr COMMA effectExprList { NonEmptyList.cons $1 $3 }
+
+optValueExprList:
+    |                                  { [] }
+    | valueExpr                        { [$1] }
+    | valueExpr COMMA optValueExprList { $1 :: $3 }
+
+identList:
+    | ident                 { NonEmptyList.singleton $1 }
+    | ident COMMA identList { NonEmptyList.cons $1 $3 }
+
+singleTypingList:
+    | singleTyping                        { NonEmptyList.singleton $1 }
+    | singleTyping COMMA singleTypingList { NonEmptyList.cons $1 $3 }
+
+
+identChoice:
+    | ident                 { NonEmptyList.singleton $1 }
+    | ident BAR identChoice { NonEmptyList.cons $1 $3 }
+
+
+typeExprProduct:
+    | typeExpr                       { NonEmptyList.singleton $1 }
+    | typeExpr TIMES typeExprProduct { NonEmptyList.cons $1 $3 }
+
+%%

@@ -1,0 +1,6 @@
+scheme Id =
+    class
+        value
+            x : array Int of Int = {. 1,2,3 .},
+            y : Int = x[1]
+    end

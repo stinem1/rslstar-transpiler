@@ -1,0 +1,7 @@
+scheme Single_Typing =
+    class
+        transition_system [TS]
+            variable
+                x : Int
+        end
+    end

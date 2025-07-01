@@ -1,0 +1,8 @@
+scheme Function =
+    class
+        value
+            f : Int -> Int
+            f(x) is x,
+
+            y : Int = f(1)
+    end

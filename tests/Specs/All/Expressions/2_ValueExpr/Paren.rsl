@@ -1,0 +1,5 @@
+scheme Paren =
+    class
+        value
+            x : Int = (1)
+    end

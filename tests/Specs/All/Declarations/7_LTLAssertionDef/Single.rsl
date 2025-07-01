@@ -1,0 +1,9 @@
+scheme Single =
+   class
+        transition_system [TS]
+        end
+
+        ltl_assertion
+            [name1] TS |- true,
+            [name2] TS |- false
+    end

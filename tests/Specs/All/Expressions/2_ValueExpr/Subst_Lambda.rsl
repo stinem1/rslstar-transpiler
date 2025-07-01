@@ -1,0 +1,7 @@
+scheme Subst_Lambda =
+    class
+        type
+            T == a | b
+        value
+            y : Bool = (-\ x: T, a: Int :- x = b /\ a = 1)(a, 1)
+    end

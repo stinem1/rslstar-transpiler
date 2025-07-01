@@ -1,0 +1,5 @@
+scheme False =
+    class
+        value
+            x : Bool = false
+    end

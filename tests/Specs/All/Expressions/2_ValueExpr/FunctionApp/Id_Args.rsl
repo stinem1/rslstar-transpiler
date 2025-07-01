@@ -1,0 +1,7 @@
+scheme Id_Args =
+    class
+        value
+            f : Int >< Int -> Int
+            f(x, y) is x + y,
+            x : Int = f(x, x)
+    end

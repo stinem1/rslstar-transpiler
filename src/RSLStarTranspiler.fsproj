@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>rslst</AssemblyName>
+    <RootNamespace>RSLStarTranspiler</RootNamespace>
+    <Version>0.0.1</Version>
+    <Description>Typechecks or unfolds an RSL* specification</Description>
+    <Authors>Stine Lund Madsen</Authors>
+    
+    <TargetFramework>net9.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <FsYaccOutputFolder>$(IntermediateOutputPath)Syntax/</FsYaccOutputFolder>
+    <FsLexOutputFolder>$(IntermediateOutputPath)Syntax/</FsLexOutputFolder>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Diagnostic.fs" />
+    <Compile Include="Node.fs" />
+    <Compile Include="AST.fs" />
+
+    <!-- Syntax -->
+    <Compile Include="Syntax/Util.fs" />
+    <FsYacc Include="Syntax/Parser.fsy">
+      <OtherFlags>--module Syntax.Parser</OtherFlags></FsYacc>
+    <Compile Include="Syntax/Parser.fsi" />
+    <Compile Include="Syntax/Parser.fs" />
+    <FsLex Include="Syntax/Lexer.fsl">
+      <OtherFlags>--module Syntax.Lexer --unicode</OtherFlags>
+    </FsLex>
+    <Compile Include="Syntax/Lexer.fsi" />
+    <Compile Include="Syntax/Lexer.fs" />
+    <Compile Include="Syntax/Error.fs" />
+    <Compile Include="Syntax/Parse.fs" />
+    <Compile Include="Syntax/Unparse.fs" />
+    <Compile Include="Syntax/Write.fs" />
+
+    <Compile Include="ASTUtil.fs" />
+
+    <!-- TypeCheck -->
+    <Compile Include="TypeCheck/Error.fs" />
+    <Compile Include="TypeCheck/Phase1.fs" />
+    <Compile Include="TypeCheck/Phase2.fs" />
+
+    <!-- Unfold -->
+    <Compile Include="Unfold/Error.fs" />
+    <Compile Include="Unfold/Evaluate.fs" />
+    <Compile Include="Unfold/Phase1.fs" />
+    <Compile Include="Unfold/Phase2.fs" />
+
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.SystemCommandLine" Version="1.0.0-beta4" />
+    <PackageReference Include="FsharpPlus" Version="1.7.0" />
+    <PackageReference Include="FsLexYacc" Version="11.3.0" />
+  </ItemGroup>
+</Project>

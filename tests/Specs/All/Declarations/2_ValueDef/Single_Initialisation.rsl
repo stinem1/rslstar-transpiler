@@ -1,0 +1,5 @@
+scheme Single_Initialisation =
+    class
+        value
+            y : Int = 1
+    end

@@ -1,0 +1,18 @@
+scheme Scope =
+    class
+        value
+            x : Int
+
+        axiom
+            x = 2
+
+        transition_system [TS]
+            variable
+                x : Bool
+            
+            init_constraint
+                x = true
+            
+        end
+        
+    end

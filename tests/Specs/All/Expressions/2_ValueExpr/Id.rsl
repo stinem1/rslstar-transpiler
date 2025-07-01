@@ -1,0 +1,5 @@
+scheme Id =
+    class
+        value 
+            x : Int = x
+    end

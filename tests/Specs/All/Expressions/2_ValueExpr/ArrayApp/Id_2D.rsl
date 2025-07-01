@@ -1,0 +1,6 @@
+scheme Id_2D =
+    class
+        value
+            x : array Int of array Int of Int = {. {. 1,2,3 .} .},
+            y : Int = x[0][2]
+    end

@@ -1,0 +1,7 @@
+scheme DuplicateDeclaration =
+    class
+        transition_system [TS]
+        end
+        transition_system [TS]
+        end
+    end

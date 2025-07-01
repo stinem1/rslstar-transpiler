@@ -1,0 +1,10 @@
+scheme Subst_Multi =
+    class
+        type
+            T == t1 | t2
+        value
+            x[t1 : T, t2: T] : Bool,
+            y : Bool = all t1: T, t2 : T :- x[.t1, t2.]
+        axiom
+            all t1 : T, t2 : T :- x[.t1, t2.] = true
+    end

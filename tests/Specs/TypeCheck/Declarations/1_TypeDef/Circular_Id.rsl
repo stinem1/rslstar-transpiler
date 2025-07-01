@@ -1,0 +1,6 @@
+scheme Circular_Id =
+    class
+        type
+            A = B,
+            B = A
+    end

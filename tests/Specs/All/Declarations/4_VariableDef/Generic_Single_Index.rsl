@@ -1,0 +1,11 @@
+scheme Generic_Single_Index =
+    class
+        type
+            T1 == x1 | x2 | x3
+        transition_system [TS]
+            variable
+                z[t1: T1] : Bool
+            init_constraint
+                all x : T1 :- z[.x.] = true
+        end
+    end

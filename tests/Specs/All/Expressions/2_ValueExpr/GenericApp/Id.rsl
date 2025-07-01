@@ -1,0 +1,10 @@
+scheme Id =
+    class
+        type
+            Range = {| i : Int :- i >= 0 /\ i < 3 |}
+        value
+            x[t: Range] : Int,
+            y : Int = x[.1.]
+        axiom
+            all i: Range :- x[.i.] = i
+    end

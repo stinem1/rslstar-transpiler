@@ -1,0 +1,5 @@
+scheme Rec_Subtype =
+    class
+        value
+            x : {| y: Int :- y < x |} = 1
+    end

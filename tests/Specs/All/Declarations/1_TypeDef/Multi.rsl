@@ -1,0 +1,7 @@
+scheme Multi =
+    class
+        type
+            T1 == x1 | x2 | x3
+        type
+            T2 = Int
+    end

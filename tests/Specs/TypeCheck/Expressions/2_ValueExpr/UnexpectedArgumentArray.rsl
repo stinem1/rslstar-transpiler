@@ -1,0 +1,6 @@
+scheme UnexpectedArgumentArray =
+    class
+        value
+            x: array Int of Int = {. 1 .},
+            y: Int = x[1][1]
+    end

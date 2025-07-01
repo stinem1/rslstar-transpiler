@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RSLStarTranspiler.Tests</RootNamespace>
+    <Authors>Stine Lund Madsen</Authors>
+    
+    <TargetFramework>net9.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Helpers.fs" />
+    <Compile Include="SyntaxTest.fs" />
+    <Compile Include="TypeCheckTest.fs" />
+    <Compile Include="UnfoldTest.fs" />
+    <Compile Include="Main.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\RSLStarTranspiler.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Expecto" Version="10.*" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+  </ItemGroup>
+</Project>

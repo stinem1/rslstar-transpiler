@@ -1,0 +1,5 @@
+scheme Subtype =
+    class
+        type
+            T = {| x: Int :- true |}
+    end

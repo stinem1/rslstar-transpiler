@@ -1,0 +1,16 @@
+scheme Id_Params =
+    class
+        type
+            Range = {| i : Int :- i >= 0 /\ i < 3 |}
+        value
+            x[t1: Range, t2: Range] : Int,
+            y : Int = x[.1, 2.]
+        axiom
+            all i: Range :- x[.i, i.] = i,
+            x[.0, 1.] = 1,
+            x[.0, 2.] = 1,
+            x[.1, 0.] = 1,
+            x[.1, 2.] = 1,
+            x[.2, 0.] = 1,
+            x[.2, 1.] = 1
+    end

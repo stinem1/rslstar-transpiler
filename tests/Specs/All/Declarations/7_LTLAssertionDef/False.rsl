@@ -1,0 +1,8 @@
+scheme False =
+    class
+        transition_system [TS]
+        end
+
+        ltl_assertion
+            [name] TS |- false
+    end

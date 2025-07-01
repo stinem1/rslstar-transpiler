@@ -1,0 +1,8 @@
+scheme TemporalOp =
+    class
+        transition_system [TS]
+        end
+
+        ltl_assertion
+            [a1] TS |- X (G true U F true) 
+    end

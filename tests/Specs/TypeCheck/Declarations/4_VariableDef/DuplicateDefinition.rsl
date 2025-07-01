@@ -1,0 +1,8 @@
+scheme DuplicateDefinition =
+    class
+        transition_system [TS]
+            variable
+                x: Int,
+                x: Int
+        end
+    end

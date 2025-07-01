@@ -1,0 +1,7 @@
+scheme EmptyArray =
+    class
+        value
+            x : Int = {..}[{..}[1]],
+            y : Int = {..}[1],
+            z : Int = {. 1, 2, 3 .}[{..}[1]]
+    end

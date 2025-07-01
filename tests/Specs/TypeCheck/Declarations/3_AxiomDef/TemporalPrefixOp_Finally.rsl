@@ -1,0 +1,5 @@
+scheme TemporalPrefixOp_Finally =
+    class
+        axiom
+            F true
+    end

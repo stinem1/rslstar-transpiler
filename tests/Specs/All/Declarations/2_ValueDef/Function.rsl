@@ -1,0 +1,6 @@
+scheme Function =
+    class
+        value
+            f : Int -> Int
+            f(x) is x
+    end

@@ -1,0 +1,6 @@
+scheme MissingDefinition =
+    class
+        value
+            x: Int = 1,
+            z: Int = x + y
+    end

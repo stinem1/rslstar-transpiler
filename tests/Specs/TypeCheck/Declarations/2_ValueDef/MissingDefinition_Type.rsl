@@ -1,0 +1,5 @@
+scheme MissingDefinition_Type =
+    class
+        value
+            x: A = 1
+    end

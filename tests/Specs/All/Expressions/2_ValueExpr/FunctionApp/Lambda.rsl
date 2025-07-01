@@ -1,0 +1,5 @@
+scheme Lambda =
+    class
+        value
+            x : Int = (-\ x, y: Int :- x + y)(x,x)
+    end

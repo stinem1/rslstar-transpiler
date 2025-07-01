@@ -1,0 +1,5 @@
+scheme TemporalInfixOp =
+    class
+        value
+            x: Bool = true U true
+    end

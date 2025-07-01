@@ -1,0 +1,5 @@
+scheme Multi_Eq =
+    class
+        axiom
+            1 = 1 = 1
+    end

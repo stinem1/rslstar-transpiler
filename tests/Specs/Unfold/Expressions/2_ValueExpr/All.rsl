@@ -1,0 +1,5 @@
+scheme All =
+    class
+        value
+            x : Bool = all x : Int :- x = 1
+    end

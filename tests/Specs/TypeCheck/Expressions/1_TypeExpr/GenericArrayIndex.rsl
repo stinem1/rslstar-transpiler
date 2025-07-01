@@ -1,0 +1,5 @@
+scheme GenericArrayIndex =
+    class
+        value
+            x [t: array Int of Int] : Int
+    end

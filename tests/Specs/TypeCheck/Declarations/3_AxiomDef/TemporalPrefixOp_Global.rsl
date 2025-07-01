@@ -1,0 +1,5 @@
+scheme TemporalPrefixOp_Next =
+    class
+        axiom
+            G true
+    end

@@ -1,0 +1,7 @@
+scheme True =
+    class
+        transition_system [TS]
+            init_constraint
+                true
+        end
+    end

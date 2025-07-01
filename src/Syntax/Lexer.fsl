@@ -1,0 +1,187 @@
+{
+open FSharp.Text.Lexing
+open Parser
+open Util
+
+System.Globalization.CultureInfo.CurrentCulture <- System.Globalization.CultureInfo "en-US"
+
+let lexeme = LexBuffer<_>.LexemeString
+
+let newline (lexbuf: LexBuffer<_>) =
+    lexbuf.EndPos <- lexbuf.EndPos.NextLine
+
+let tryParseInt (lexbuf: LexBuffer<_>) = 
+    let lexeme = lexeme lexbuf
+    try
+        int lexeme
+    with exn ->
+        raise (InvalidInt (
+            mkSpan (lexbuf.StartPos, lexbuf.EndPos), 
+            exn.Message
+        ))
+}
+
+let ident = ['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
+let intLit = ['0'-'9']+
+let whitespace = [' ''\t']
+let newline = "\r\n" | '\n' | '\r'
+let lineComment = "--" [^'\n''\r']*
+
+rule tokenize = parse
+
+// Rules for skipping characters and lines
+| whitespace                { tokenize lexbuf }
+| newline                   { newline lexbuf; tokenize lexbuf }
+| lineComment               { tokenize lexbuf }
+| "/*"                      { multilineComment false lexbuf }
+
+// Keywords
+| "Bool"                    { TYPE_BOOL }
+| "Int"                     { TYPE_INT }
+| "all"                     { ALL }
+| "array"                   { ARRAY }
+| "axiom"                   { AXIOM }
+| "class"                   { CLASS }
+| "else"                    { ELSE }
+| "end"                     { END }
+| "exists"                  { EXISTS }
+| "if"                      { IF }
+| "in"                      { IN }
+| "init_constraint"         { INIT_CONSTRAINT }
+| "is"                      { IS }
+| "let"                     { LET }
+| "ltl_assertion"           { LTL_ASSERTION }
+| "of"                      { OF }
+| "scheme"                  { SCHEME }
+| "then"                    { THEN }
+| "transition_rules"        { TRANSITION_RULES }
+| "transition_system"       { TRANSITION_SYSTEM }
+| "type"                    { TYPE }
+| "value"                   { VALUE }
+| "variable"                { VARIABLE }
+
+| "Char"      
+| "Nat"       
+| "Real"      
+| "Text"      
+| "Unit"      
+| "abs"       
+| "always"    
+| "any"       
+| "as"        
+| "card"      
+| "case"      
+| "channel"   
+| "chaos"     
+| "distinct"  
+| "do"        
+| "dom"       
+| "elems"     
+| "elsif"     
+| "extend"    
+| "for"       
+| "hd"        
+| "hide"      
+| "inds"      
+| "initialise"
+| "int"       
+| "inter"     
+| "isin"      
+| "len"       
+| "local"     
+| "object"    
+| "out"       
+| "post"      
+| "pre"       
+| "read"      
+| "real"      
+| "rng"       
+| "skip"      
+| "stop"      
+| "swap"      
+| "test_case" 
+| "tl"        
+| "union"     
+| "until"     
+| "use"       
+| "where"     
+| "while"     
+| "with"      
+| "write"                   { 
+                                raise (ReservedKeyword (
+                                    mkSpan (lexbuf.StartPos, lexbuf.EndPos), 
+                                    lexeme lexbuf
+                                ))
+                            }
+
+// Operators
+| "=>"                      { IMP }
+| "\\/"                     { OR }
+| "/\\"                     { AND }
+| "~"                       { NOT }
+
+| "U"                       { UNTIL }
+| "G"                       { GLOBAL }
+| "F"                       { FINALLY }
+| "X"                       { NEXT }
+| "[=]"                     { NON_DET_CHOICE }
+| "[>]"                     { PRIORITY_CHOICE }
+
+| "="                       { EQ }
+| "~="                      { NEQ }
+| ">"                       { GE }
+| "<"                       { LE }
+| ">="                      { GEQ }
+| "<="                      { LEQ }
+
+| "+"                       { PLUS }
+| "-"                       { MINUS }
+| "\\"                      { BACK_SLASH }
+| "*"                       { STAR }
+| "/"                       { FORWARD_SLASH }
+
+// Symbols
+| "-\\"                     { LAMBDA }
+| ":-"                      { COLON_DASH }
+| "=="                      { EQ_EQ }
+| "|-"                      { TURNSTILE }
+| "==>"                     { LONG_DOUBLE_RIGHT_ARROW }
+| "><"                      { TIMES }
+| "->"                      { RIGHT_ARROW }
+| "|"                       { BAR }
+| ":"                       { COLON }
+| ","                       { COMMA }
+
+// Brackets
+| "["                       { LEFT_SQUARE }
+| "]"                       { RIGHT_SQUARE }
+| "[."                      { LEFT_SQUARE_DOT }
+| ".]"                      { RIGHT_SQUARE_DOT }
+| "("                       { LEFT_PAREN }
+| ")"                       { RIGHT_PAREN }
+| "{|"                      { LEFT_DOUBLE_CURLY }
+| "|}"                      { RIGHT_DOUBLE_CURLY }
+| "{."                      { LEFT_CURLY_DOT }
+| ".}"                      { RIGHT_CURLY_DOT }
+
+// Literals
+| "true"                    { BOOL true }
+| "false"                   { BOOL false }
+| intLit                    { INT (tryParseInt lexbuf) }
+| ident '''                 { PRIME_IDENT (lexeme lexbuf) }
+| ident                     { IDENT (lexeme lexbuf) }
+
+| eof                       { EOF }
+| _                         { raise (InvalidToken (
+                                mkSpan (lexbuf.StartPos, lexbuf.EndPos), 
+                                lexeme lexbuf
+                              )) 
+                            }
+
+and multilineComment (predStar: bool) = parse
+| '*'                       { multilineComment true lexbuf }
+| '/'                       { if predStar 
+                              then tokenize lexbuf 
+                              else multilineComment false lexbuf 
+                            }
+| _                         { multilineComment false lexbuf }

@@ -1,0 +1,6 @@
+scheme Distinct_Args =
+    class
+        value
+            f: Int >< Int -> Int
+            f(x, x) is x
+    end

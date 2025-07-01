@@ -1,0 +1,6 @@
+scheme DuplicateDefinition =
+    class
+        type
+            A = Int,
+            A = Bool
+    end

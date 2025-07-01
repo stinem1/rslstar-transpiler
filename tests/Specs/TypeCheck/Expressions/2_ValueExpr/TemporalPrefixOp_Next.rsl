@@ -1,0 +1,5 @@
+scheme TemporalPrefixOp_Next =
+    class
+        value
+            x: Bool = X true
+    end

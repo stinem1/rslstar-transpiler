@@ -1,0 +1,4 @@
+scheme Ge =
+    class
+        value x: Bool = 1 > 1
+    end

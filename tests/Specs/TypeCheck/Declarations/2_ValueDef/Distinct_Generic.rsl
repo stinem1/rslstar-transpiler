@@ -1,0 +1,5 @@
+scheme Distinct_Generic =
+    class
+        value
+            x[t: Int, t: Int] : Int
+    end

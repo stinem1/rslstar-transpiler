@@ -1,0 +1,5 @@
+scheme TemporalInfixOp =
+    class
+        axiom
+            true U true
+    end

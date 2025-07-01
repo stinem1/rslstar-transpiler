@@ -1,0 +1,675 @@
+/**
+* Source: https://github.com/raisetools/rslstar/blob/master/spec-examples/dracos/discorail2020/OneStation.rsl
+**/
+scheme OneStation_SyntaxV1 = 
+  class
+    type
+      /* TYPES FOR STATIC CONTROL COMPONENT DATA */
+      /* Train control computers */
+      Route = array RouteIndex of SegmentID,
+      Switchboxes = array RouteIndex of SwitchboxID,
+      /* Switchboxes */
+      SbSegments = array SbIndex of SegmentID,
+
+      /* TYPES FOR DYNAMIC CONTROL COMPONENT DATA */
+      /* Train control computers*/
+      TNextSbReservation = array TwoIndex of SegmentID,
+      /* Switchboxes */
+      SbReservation = array SbIndex of TrainID,
+      Connection = array TwoIndex of SegmentID,
+      SensorState == active | passive,
+
+      /* INDEX TYPES */
+      SbIndex = {| i : Int :- i >= 0 /\ i < 3 |},
+      RouteIndex = {| i : Int :- i >= 0 /\ i < 4 |},
+      RouteIndexFromOne = {| i : Int :- i >= 1 /\ i < 4 |},
+      RouteIndexOneLess = {| i : Int :- i >= 1 /\ i < 3 |},
+      TwoIndex = {| i : Int :- i >= 0 /\ i < 2 |}, 
+
+      /* TYPES FOR NETWORK CONFIGURATION DATA */
+      SegmentID_prime = {| s : SegmentID :- s ~= seg_none|},
+      SegmentID == s1 | s2 | s3 | s4 | seg_none, 
+      TrainID_prime = {| t : TrainID :- t ~= t_none |}, 
+      TrainID == t1 | t2 | t_none, 
+      SwitchboxID_prime = {| sb : SwitchboxID :- sb ~= sb_none |},
+      SwitchboxID == sb0 | sb1 | sb2 | sb3 | sb_none      
+
+    value
+      /* GUARD FUNCTIONS */
+      t_can_move : Route >< Bool >< TNextSbReservation >< SegmentID >< RouteIndex -> Bool
+      t_can_move(r, lock, nextSbRes, nextNextSbRes, idx) is
+        -- next sb is locked.
+        lock = true /\
+        -- next segment is reserved at the next sb.
+        r[idx] = nextSbRes[1] /\
+        -- next segment is reserved at the next next sb.
+        r[idx] = nextNextSbRes,
+	
+      t_is_at_end : Route >< RouteIndex -> Bool
+      t_is_at_end(r, idx) is
+        r[idx] = seg_none,
+
+      t_can_reserve_next : SegmentID >< SegmentID >< Route >< Switchboxes >< TNextSbReservation >< 
+      		                 SegmentID >< SwitchboxID >< RouteIndex -> Bool
+      t_can_reserve_next(hdPos, tlPos, r, sbs, nextSbRes, toBeRes, resAt, idx) is
+        -- single position
+        hdPos = tlPos /\
+        -- reserving the next segment
+        toBeRes = r[idx] /\
+        -- reserving at the next sb and there is a free spot (reservation is not already made).
+        resAt = sbs[idx - 1] /\ (nextSbRes[0] = seg_none \/ nextSbRes[1] = seg_none),
+
+      t_can_reserve_next_next : SegmentID >< SegmentID >< Route >< Switchboxes >< SegmentID ><
+      		                      SegmentID >< SwitchboxID >< RouteIndex -> Bool
+      t_can_reserve_next_next(hdPos, tlPos, r, sbs, nextNextSbRes, toBeRes, resAt, idx) is
+        -- single position
+        hdPos = tlPos /\
+        -- reserving the next segment
+        toBeRes = r[idx] /\
+        -- reserving at the next next sb and that spot is free (reservation is not already made).
+        resAt = sbs[idx] /\ nextNextSbRes = seg_none,
+
+      t_can_switch_and_lock : SegmentID >< Route >< Switchboxes >< TNextSbReservation >< SegmentID >< Bool ><
+      			                  SegmentID >< SegmentID >< SwitchboxID >< RouteIndex -> Bool 
+      t_can_switch_and_lock(pos, r, sbs, nextSbRes, nextNextSbRes, lock, switchTo0, switchTo1, toBeLocked, idx) is
+         -- locking the next switchbox.
+        toBeLocked = sbs[idx - 1] /\
+        -- next sb is not already locked.
+        lock = false /\
+        -- have reserved the next segment at both next and next next sb.
+        r[idx] = nextSbRes[1] /\
+        r[idx] = nextNextSbRes /\
+        -- have reserved the current segment at the next sb.
+        pos = nextSbRes[0] /\
+        -- switching to the connection between current and next position.
+        (switchTo0 = pos /\ switchTo1 = r[idx] \/
+         switchTo1 = pos /\ switchTo0 = r[idx]),
+
+
+      sb_can_reserve : TrainID -> Bool
+      sb_can_reserve(res) is
+        -- segment is not already reserved by a train.
+        res = t_none,
+
+      is_possible_conn : Connection >< SbSegments -> Bool
+      is_possible_conn(conn, segs) is
+        (conn[0] = segs[0] /\ (conn[1] = segs[1] \/ conn[1] = segs[2])) \/
+	      (conn[1] = segs[0] /\ (conn[0] = segs[1] \/ conn[0] = segs[2])),
+      	 
+      sb_can_switch_and_lock : SensorState >< TrainID >< Connection >< SbSegments -> Bool
+      sb_can_switch_and_lock(sensor, lock, reqConn, sbSegs) is
+        -- no train detected.
+        sensor = passive /\
+        -- not locked.
+        lock = t_none /\
+        -- can switch to requested connection
+        is_possible_conn(reqConn,sbSegs),
+
+
+      /* SAFETY INVARIANT FUNCTIONS */
+      no_collide : SegmentID >< SegmentID >< SegmentID >< SegmentID -> Bool
+      no_collide(hdPos1, tlPos1, hdPos2, tlPos2) is 
+        hdPos1 ~= hdPos2 /\
+        hdPos1 ~= tlPos2 /\
+        tlPos1 ~= hdPos2 /\
+        tlPos1 ~= tlPos2,
+      	 
+      no_derail : SegmentID >< SegmentID >< Connection -> Bool
+      no_derail(hdPos, tlPos, conn) is 
+        hdPos ~= tlPos =>
+	      ((conn[0] = hdPos /\ conn[1] = tlPos) \/ conn[1] = hdPos /\ conn[0] = tlPos), 
+
+
+      /* STRENGTHENING INVARIANT FUNCTIONS */
+      cons_res_pos : TNextSbReservation >< SegmentID ><SegmentID >< SegmentID -> Bool
+      cons_res_pos(nextres, nextnextres, hdpos, tlpos) is
+        (hdpos = tlpos /\ nextres[0] = hdpos) \/
+	      (hdpos ~= tlpos /\ nextres[0] = tlpos /\ nextres[1] = hdpos /\ nextnextres = hdpos),
+
+      cons_nextres_t_sb : TrainID >< TNextSbReservation >< SbReservation >< SbSegments >< SbIndex >< Bool -> Bool
+      cons_nextres_t_sb(t, tNextRes, sbRes, sbSeg, index, resNextEvent) is
+        ((tNextRes[0] = sbSeg[index] /\ sbSeg[index] ~= seg_none) => sbRes[index] = t) /\
+	      ((tNextRes[1] = sbSeg[index] /\ sbSeg[index] ~= seg_none) => sbRes[index] = t),
+
+      cons_nextnextres_t_sb : TrainID >< SegmentID >< SbReservation >< SbSegments >< SbIndex >< Bool -> Bool
+      cons_nextnextres_t_sb(t, tNextNextRes, sbRes, sbSeg, index, resNextNextEvent) is
+        ((tNextNextRes = sbSeg[index] /\ sbSeg[index] ~= seg_none) => sbRes[index] = t),
+
+      cons_nextres_route : TNextSbReservation >< SegmentID >< Route >< RouteIndexFromOne -> Bool
+      cons_nextres_route(nextRes, nextNextRes, r, i) is
+        (nextRes[0] ~= seg_none => (nextRes[0] = r[i] \/ nextRes[0] = r[i - 1])) /\
+        (nextRes[1] ~= seg_none => (nextRes[1] = r[i] \/ nextRes[1] = r[i - 1])) /\
+	      (nextNextRes ~= seg_none => nextNextRes = r[i]),
+
+      cons_nextsb_res : TNextSbReservation >< SbSegments -> Bool
+      cons_nextsb_res(tNextRes, nextSbSeg) is
+        (tNextRes[0] = seg_none \/ tNextRes[0] = nextSbSeg[0] \/ tNextRes[0] = nextSbSeg[1] \/ tNextRes[0] = nextSbSeg[2]) /\
+        (tNextRes[1] = seg_none \/ tNextRes[1] = nextSbSeg[0] \/ tNextRes[1] = nextSbSeg[1] \/ tNextRes[1] = nextSbSeg[2]),
+
+      cons_nextnextsb_res : SegmentID >< SbSegments -> Bool
+      cons_nextnextsb_res(tNextNextRes, nextNextSbSeg) is
+        (tNextNextRes = seg_none \/ tNextNextRes = nextNextSbSeg[0] \/
+	       tNextNextRes = nextNextSbSeg[1] \/ tNextNextRes = nextNextSbSeg[2]),
+
+      cons_locks_pos : Bool >< SegmentID >< SegmentID -> Bool
+      cons_locks_pos(lock, hdpos, tlpos) is
+        (hdpos = tlpos) \/
+	      (hdpos ~= tlpos /\ lock),
+
+      cons_nextsb_segments_pos : SegmentID >< SegmentID >< SbSegments -> Bool
+      cons_nextsb_segments_pos(hdpos, tlpos, nextsbSegments) is
+        -- single pos, then the position segment is one of the segments of the next switchbox
+        (hdpos = tlpos /\ (hdpos = nextsbSegments[0] \/ hdpos = nextsbSegments[1] \/ hdpos = nextsbSegments[2])) \/
+        -- double pos, then the position segments are a (stem, branch) pair in either direction of the next switchbox
+        (hdpos ~= tlpos /\ (hdpos = nextsbSegments[0] /\ tlpos = nextsbSegments[1] \/
+                            tlpos = nextsbSegments[0] /\ hdpos = nextsbSegments[1] \/
+                            hdpos = nextsbSegments[0] /\ tlpos = nextsbSegments[2] \/
+                            tlpos = nextsbSegments[0] /\ hdpos = nextsbSegments[2])),
+
+      cons_pos_route : SegmentID >< SegmentID >< Route >< RouteIndexFromOne -> Bool
+      cons_pos_route(hdpos, tlpos, r, i) is
+        (hdpos = tlpos /\ hdpos = r[i - 1]) \/
+        (hdpos ~= tlpos /\ hdpos = r[i] /\ tlpos = r[i - 1]),
+
+      cons_connection_segments : SbSegments >< Connection -> Bool
+      cons_connection_segments(sbSegs, sbConn) is
+        (sbConn[0] = sbSegs[0] /\ sbConn[1] = sbSegs[1]) \/
+        (sbConn[1] = sbSegs[0] /\ sbConn[0] = sbSegs[1]) \/
+        (sbConn[0] = sbSegs[0] /\ sbConn[1] = sbSegs[2]) \/
+        (sbConn[1] = sbSegs[0] /\ sbConn[0] = sbSegs[2]),
+
+      cons_ack_and_nack : TrainID >< TrainID >< TrainID >< TrainID >< SwitchboxID >< SwitchboxID -> Bool
+      cons_ack_and_nack(a1, a2, n1, n2, r1, r2) is
+        (a1 ~= t_none => (a2 = t_none /\ n1 = t_none /\ n2 = t_none)) /\
+        (n1 ~= t_none => (n2 = t_none /\ a1 = t_none /\ a2 = t_none)) /\
+        (r1 ~= sb_none => (r2 = sb_none /\ n1 = t_none /\ n2 = t_none /\ a1 = t_none /\ a2 = t_none)),
+        
+      cons_events : Bool >< Bool >< Bool -> Bool
+      cons_events(resNext, resNextNext, lock) is
+        (resNext => ~resNextNext /\ ~lock) /\
+        (resNextNext => ~resNext /\ ~lock) /\
+        (lock => ~resNext /\ ~resNextNext),
+
+      cons_events_comm : Bool >< Bool >< Bool >< TrainID >< TrainID >< SwitchboxID -> Bool
+      cons_events_comm(resNext, resNextNext, lock, ak, nak, rq) is
+        (ak ~= t_none \/ nak ~= t_none \/ rq ~= sb_none) => (resNext \/ resNextNext \/ lock),
+
+      cons_sensor_pos : SegmentID >< SegmentID >< SensorState -> Bool
+      cons_sensor_pos(hdpos, tlpos, sensor) is
+        (hdpos ~= tlpos => sensor = active),
+
+      cons_sensor_pos2 : SegmentID >< SegmentID >< SegmentID >< SegmentID >< SensorState >< Connection -> Bool
+      cons_sensor_pos2(hdpos1, tlpos1, hdpos2, tlpos2, sensor, sbConn) is
+        (sensor = active => ((hdpos1 = sbConn[0] /\ tlpos1 = sbConn[1]) \/
+                             (hdpos1 = sbConn[1] /\ tlpos1 = sbConn[0]) \/
+                             (hdpos2 = sbConn[0] /\ tlpos2 = sbConn[1]) \/
+                             (hdpos2 = sbConn[1] /\ tlpos2 = sbConn[0]))),
+
+      cons_nextsb_index : SwitchboxID >< Switchboxes >< RouteIndexFromOne -> Bool
+      cons_nextsb_index(nextsb, sboxes, i) is
+        nextsb = sboxes[i - 1],
+
+      cons_locks : Bool >< TrainID >< TrainID -> Bool
+      cons_locks(tlock, t, sblock) is
+        (tlock => sblock = t),
+
+      cons_locks2_and_nextsb : Bool >< TrainID >< TrainID >< Bool >< SwitchboxID >< SwitchboxID >< SwitchboxID -> Bool
+      cons_locks2_and_nextsb(tlock, t, sblock, event, nextsb, sb, rq) is
+        ((~event \/ (event /\ rq = sb)) /\ sblock = t) => (tlock /\ sb = nextsb),
+
+      cons_lock_reservations : Bool >< TNextSbReservation >< SegmentID -> Bool
+      cons_lock_reservations(lock, nextSbRes, nextNextSbRes) is
+        lock => (nextSbRes[1] ~= seg_none /\ nextNextSbRes ~= seg_none),
+
+      cons_req : SwitchboxID >< SwitchboxID >< Switchboxes >< RouteIndexOneLess >< Bool >< Bool >< Bool -> Bool
+      cons_req(requestedSb, nextsb, sboxes, i, resNext, resNextNext, switchLock) is
+        ((resNext \/ resNextNext \/ switchLock) /\ requestedSb ~= sb_none) => (requestedSb = nextsb \/ requestedSb = sboxes[i]),
+
+      cons_lock_conn : Bool >< Connection >< Route >< RouteIndex -> Bool
+      cons_lock_conn(lock, sbConn, r, i) is
+        lock => ((sbConn[0] = r[i - 1] /\ sbConn[1] = r[i]) \/
+                 (sbConn[0] = r[i] /\ sbConn[1] = r[i - 1])),
+
+      end_sb_cannot_lock : TrainID >< SbSegments -> Bool
+      end_sb_cannot_lock(lock, segs) is
+        (segs[1] = seg_none /\ segs[2] = seg_none) => lock = t_none,
+
+      cons_nextresevent_comm : TrainID >< SwitchboxID >< SwitchboxID >< TrainID >< TrainID >< SwitchboxID -> Bool
+      cons_nextresevent_comm(t, sb, rq, ak, nak, nextsb) is
+        (ak = t => sb = nextsb) /\
+        (nak = t => sb = nextsb) /\
+        (rq = sb => sb = nextsb),
+
+      cons_resreq_route : SwitchboxID >< SegmentID >< SegmentID -> Bool
+      cons_resreq_route(rq, rqseg, nextpos) is
+        rq ~= sb_none => rqseg = nextpos,
+
+      cons_sb_res_next_sbs : SbReservation >< SwitchboxID >< SwitchboxID >< SwitchboxID >< TrainID -> Bool
+      cons_sb_res_next_sbs(sbRes, nextsb, nextnextsb, sb, t) is
+        (sbRes[0] = t => (sb = nextsb \/ sb = nextnextsb)) /\
+        (sbRes[1] = t => (sb = nextsb \/ sb = nextnextsb)) /\
+        (sbRes[2] = t => (sb = nextsb \/ sb = nextnextsb)),
+
+      cons_res_sb_t : SbReservation >< SbSegments >< SwitchboxID >< SwitchboxID >< TNextSbReservation >< SegmentID >< SwitchboxID >< TrainID -> Bool
+      cons_res_sb_t(sbRes, sbSeg, nextsb, nextnextsb, nextRes, nextNextRes, sb, t) is
+        (sbRes[0] = t => ((sb = nextsb /\ (sbSeg[0] = nextRes[0] \/ sbSeg[0] = nextRes[1])) \/
+                          (sb = nextnextsb /\ sbSeg[0] = nextNextRes))) /\
+        (sbRes[1] = t => ((sb = nextsb /\ (sbSeg[1] = nextRes[0] \/ sbSeg[1] = nextRes[1])) \/
+                          (sb = nextnextsb /\ sbSeg[1] = nextNextRes))) /\
+        (sbRes[2] = t => ((sb = nextsb /\ (sbSeg[2] = nextRes[0] \/ sbSeg[2] = nextRes[1])) \/
+                          (sb = nextnextsb /\ sbSeg[2] = nextNextRes))),
+
+      cons_req_conn_conn : SegmentID >< SegmentID >< SegmentID >< SegmentID -> Bool
+      cons_req_conn_conn(rqConn0, rqConn1, curPos, nextPos) is
+        (rqConn0 = curPos /\ rqConn1 = nextPos) \/
+        (rqConn1 = curPos /\ rqConn0 = nextPos)
+        
+    value
+      /* VALUES (CONSTANTS) FOR STATIC CONTROL COMPONENT DATA */
+      -- The train route. 
+      route[t : TrainID_prime] : Route,			              -- array RouteIndex of SegmentID
+      -- The switchboxes along the train route.
+      switchboxes[t : TrainID_prime] : Switchboxes,	      -- array RouteIndex of SwitchboxID
+
+      -- The segments associated with each switchbox. Index 0 = stem, 1 = plus, 2 = minus. 
+      sbSegments[sb : SwitchboxID_prime] : SbSegments	    -- array SbIndex of SegmentID
+  
+    axiom
+      /* CONFIGURATION OF STATIC CONTROL COMPONENT DATA */
+      route[.t1.] = {. s1, s2, s4, seg_none .},
+      route[.t2.] = {. s4, s3, s1, seg_none .},
+      switchboxes[.t1.] = {. sb1, sb2, sb3, sb_none .},
+      switchboxes[.t2.] = {. sb2, sb1, sb0, sb_none .},
+      sbSegments[.sb0.] = {. s1, seg_none, seg_none .},
+      sbSegments[.sb1.] = {. s1, s2, s3 .},
+      sbSegments[.sb2.] = {. s4, s2, s3 .},
+      sbSegments[.sb3.] = {. s4, seg_none, seg_none .}
+
+    transition_system [TS]
+      variable
+        /* VARIABLES FOR DYNAMIC CONTROL COMPONENT DATA */
+        -- Head and tail positions of the train.
+        hdPos[t : TrainID_prime] : SegmentID,
+        tlPos[t : TrainID_prime] : SegmentID,
+      
+        -- The next switchbox of the train.
+        nextSb[t : TrainID_prime] : SwitchboxID,
+        
+        -- The index of the train, used to keep track of how far along its route a train is.
+        -- The index is started at 1, and thus points to the next segment the train should enter.
+        -- The index with 1 subtracted then points to the next switchbox that the train should pass. 
+        index[t : TrainID_prime] : RouteIndexFromOne,
+
+        -- The reservations at the next switchbox. Takes advantage of the fact that a train at
+        -- maximum has two reservations at the next switchbox. 
+        tNextSbRes[t : TrainID_prime] : TNextSbReservation,	-- array TwoIndex of SegmentID
+        
+        -- The reservation at the next next switchbox. Takes advantage of the fact that a train
+        -- at maximum has a single reservation at the next next switchbox. 
+        tNextNextSbRes[t : TrainID_prime] : SegmentID,
+
+        -- Whether the next switchbox is locked. Takes advantage of the fact that a train at
+        -- maximum has a single lock at the time. 
+        tNextLocked[t : TrainID_prime] : Bool,
+
+        -- The state of the sensor associated with each switchbox.
+        sbSensor[sb : SwitchboxID_prime] : SensorState,
+
+        -- The connection (the two connected segments) at each switchbox.
+        sbConnection[sb : SwitchboxID_prime] : Connection,	    -- array TwoIndex of SegmentID
+
+        -- The reservations of each switchbox. The SbIndex corresponds to the index of the
+        -- SbSegments structure (stem, plus, minus).
+        sbReservations[sb : SwitchboxID_prime] : SbReservation,	-- array SbIndex of TrainID
+
+        -- The lock of each switchbox. 
+        sbLock[s : SwitchboxID_prime] : TrainID,
+
+        /* INTERFACE AND COMMUNICATION VARIABLES */
+        reserveNextEvent : Bool,
+        reserveNextNextEvent : Bool,
+        switchLockEvent : Bool,
+
+        reqSeg : SegmentID,
+        reqConn : Connection,
+
+        req[t : TrainID_prime] : SwitchboxID,
+        ack[sb : SwitchboxID_prime]  : TrainID,
+        nack[sb : SwitchboxID_prime] : TrainID
+  
+      init_constraint
+        /* CONFIGURATION OF DYNAMIC CONTROL COMPONENT DATA AND COMMUNICATION VARIABLES */
+        hdPos[.t1.] = s1,
+        tlPos[.t1.] = s1,
+        hdPos[.t2.] = s4,
+        tlPos[.t2.] = s4,
+        nextSb[.t1.] = sb1,
+        nextSb[.t2.] = sb2,
+        index[.t1.] = 1,
+        index[.t2.] = 1,
+        tNextSbRes[.t1.] = {. s1, seg_none .},
+        tNextSbRes[.t2.] = {. s4, seg_none .},
+        tNextNextSbRes[.t1.] = seg_none,
+        tNextNextSbRes[.t2.] = seg_none,
+        (all t : TrainID_prime :- tNextLocked[.t.] = false),
+
+        (all sb : SwitchboxID_prime :- sbSensor[.sb.] = passive),
+        sbConnection[.sb0.] = {. s1, seg_none .},
+        sbConnection[.sb1.] = {. s1, s3 .},
+        sbConnection[.sb2.] = {. s2, s4 .},
+        sbConnection[.sb3.] = {. s4, seg_none .},
+        sbReservations[.sb0.] = {. t_none, t_none, t_none .},
+        sbReservations[.sb1.] = {. t1, t_none, t_none .},
+        sbReservations[.sb2.] = {. t2, t_none, t_none .},
+        sbReservations[.sb3.] = {. t_none, t_none, t_none .},
+        (all sb : SwitchboxID_prime :- sbLock[.sb.] = t_none),
+        reserveNextEvent = false,
+        reserveNextNextEvent = false,
+        switchLockEvent = false,
+        reqSeg = seg_none,
+        reqConn = {. seg_none, seg_none .},
+        (all t : TrainID_prime :- req[.t.] = sb_none),
+        (all sb : SwitchboxID_prime :- ack[.sb.] = t_none),
+        (all sb : SwitchboxID_prime :- nack[.sb.] = t_none)
+
+
+      transition_rules
+        /* TRANSITION SYSTEM RULES */
+        ( -- [Reserve]
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime, seg : SegmentID_prime :- 
+          [train_request_reservation_next]
+            ~reserveNextEvent /\ ~reserveNextNextEvent /\
+            ~switchLockEvent /\
+            -- no request sent by the train already
+            req[.t.] = sb_none /\
+            -- train has not reached end of route
+            route[.t.][index[.t.]] ~= seg_none /\
+            -- check if the train can reserve at the next sb
+            t_can_reserve_next(hdPos[.t.], tlPos[.t.], route[.t.], switchboxes[.t.], tNextSbRes[.t.], seg, sb, index[.t.]) 
+            ==>
+            -- send request to the next sb
+            req'[.t.] = sb,
+            -- request the segment 
+            reqSeg' = seg,
+            -- set event
+            reserveNextEvent' = true
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime, seg : SegmentID_prime :- 
+          [train_request_reservation_next_next]
+            ~reserveNextEvent /\ ~reserveNextNextEvent /\
+            ~switchLockEvent /\
+            -- no request sent by the train
+            req[.t.] = sb_none /\
+            -- train has not reached end of route
+            route[.t.][index[.t.]] ~= seg_none /\
+            -- check if the train can reserve at the next next sb
+            t_can_reserve_next_next(hdPos[.t.], tlPos[.t.], route[.t.], switchboxes[.t.], tNextNextSbRes[.t.], seg, sb, index[.t.]) 
+            ==>
+            -- send request to the next next sb
+            req'[.t.] = sb,
+            -- request the segment
+            reqSeg' = seg,
+            -- set event
+            reserveNextNextEvent' = true
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime, i : TwoIndex :-
+          [train_reserve_next_ack]
+            reserveNextEvent /\
+            -- recevied acknowledgement
+            ack[.sb.] = t /\
+            -- find the index which does not have a reservation
+            tNextSbRes[.t.][i] = seg_none
+            ==>
+            -- set the reserved segment
+            tNextSbRes'[.t.][i] = reqSeg,
+            -- consume acknowledgement
+            ack'[.sb.] = t_none,
+            -- set event
+            reserveNextEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [train_reserve_next_next_ack]
+            reserveNextNextEvent /\
+            -- received acknowledgement
+            ack[.sb.] = t 
+            ==>
+            -- set the reserved segment
+            tNextNextSbRes'[.t.] = reqSeg,
+            -- comsume acknowledgement
+            ack'[.sb.] = t_none,
+            -- set event
+            reserveNextNextEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [train_reserve_next_nack]
+            reserveNextEvent /\
+            -- received negative acknowledgement
+            nack[.sb.] = t
+            ==>
+            -- consume acknowledgement
+            nack'[.sb.] = t_none,
+            -- set event
+            reserveNextEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [train_reserve_next_next_nack]
+            reserveNextNextEvent /\
+            -- received negative acknowledgement
+            nack[.sb.] = t
+            ==>
+            -- consume acknowledgement
+            nack'[.sb.] = t_none,
+            -- set event
+            reserveNextNextEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime, i : SbIndex :-
+          [switchbox_ack_reservation]
+            (reserveNextEvent \/ reserveNextNextEvent) /\
+            -- received request
+            req[.t.] = sb /\
+            -- find the index in sbSegments corresponding to the requested segment
+            sbSegments[.sb.][i] = reqSeg /\
+            sb_can_reserve(sbReservations[.sb.][i])
+            ==>
+            -- send acknowledgement
+            ack'[.sb.] = t,
+            -- consume request
+            req'[.t.] = sb_none,
+            -- reserve the segment for the train
+            sbReservations'[.sb.][i] = t
+         )
+ 
+         [=]
+       
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime, i : SbIndex :-
+          [switchbox_nack_reservation]
+            (reserveNextEvent \/ reserveNextNextEvent) /\
+            -- received request
+            req[.t.] = sb /\
+            -- find the index in sbSegments corresponding to the requested segment
+            sbSegments[.sb.][i] = reqSeg /\
+            ~sb_can_reserve(sbReservations[.sb.][i])
+            ==>
+            -- send negative acknowledgement
+            nack'[.sb.] = t,
+            -- consume request
+            req'[.t.] = sb_none
+         )
+        )
+        
+        [=]
+
+        ( -- [Lock]
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :- 
+          [train_request_lock]
+            ~reserveNextEvent /\
+            ~reserveNextNextEvent /\
+            ~switchLockEvent /\
+            -- train has not sent a request
+            req[.t.] = sb_none /\
+            -- train has not reached end of route
+            route[.t.][index[.t.]] ~= seg_none /\
+            t_can_switch_and_lock(hdPos[.t.], route[.t.], switchboxes[.t.], tNextSbRes[.t.], tNextNextSbRes[.t.], tNextLocked[.t.],
+              hdPos[.t.], route[.t.][index[.t.]], sb, index[.t.])
+            ==>
+            -- send request
+            req'[.t.] = sb,
+            -- set requested connection to hdPos and next segment
+            reqConn'[0] = hdPos[.t.],
+            reqConn'[1] = route[.t.][index[.t.]],
+            -- set event
+            switchLockEvent' = true
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [train_lock_ack]
+            switchLockEvent /\
+            -- received acknowledgement
+            ack[.sb.] = t
+            ==>
+            -- lock the next switchbox
+            tNextLocked'[.t.] = true,
+            -- consume acknowledgement
+            ack'[.sb.] = t_none,
+            -- set event
+            switchLockEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [train_lock_nack]
+            switchLockEvent /\
+            -- received negative acknowledgement
+            nack[.sb.] = t
+            ==>
+            -- consume acknowledgement
+            nack'[.sb.] = t_none,
+            -- set event
+            switchLockEvent' = false
+         )
+ 
+         [=]
+ 
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [switchbox_ack_lock]
+            switchLockEvent /\
+            -- received request
+            req[.t.] = sb /\
+            -- can switch and lock
+            sb_can_switch_and_lock(sbSensor[.sb.], sbLock[.sb.], reqConn, sbSegments[.sb.]) 
+            ==>
+            -- send acknowledgement
+            ack'[.sb.] = t,
+            -- consume request
+            req'[.t.] = sb_none,
+            -- set connection to requested
+            sbConnection'[.sb.][0] = reqConn[0],
+            sbConnection'[.sb.][1] = reqConn[1],
+            -- set lock
+            sbLock'[.sb.] = t
+         )
+ 
+         [=]
+       
+         ([=] sb : SwitchboxID_prime, t : TrainID_prime :-
+          [switchbox_nack_lock]
+            switchLockEvent /\
+            -- received request
+            req[.t.] = sb /\
+            -- cannot lock
+            ~sb_can_switch_and_lock(sbSensor[.sb.], sbLock[.sb.], reqConn, sbSegments[.sb.]) 
+            ==>
+            -- send negative acknowledgement
+            nack'[.sb.] = t,
+            -- consume request
+            req'[.t.] = sb_none
+         )
+        )
+
+        [=]
+      
+        ( -- [Move]
+         ([=] t : TrainID_prime, sb : SwitchboxID_prime :-
+          [move_single_to_double]
+            -- is in single position
+            hdPos[.t.] = tlPos[.t.] /\
+            -- index points to the next segment, so this checks if the train has reached the end of the route
+            route[.t.][index[.t.]] ~= seg_none /\
+            -- the train's next switchbox
+            sb = nextSb[.t.] /\
+            -- check if train can move
+            t_can_move(route[.t.], tNextLocked[.t.], tNextSbRes[.t.], tNextNextSbRes[.t.], index[.t.]) 
+            ==>
+            -- update the front of the train to the next segment
+            hdPos'[.t.] = route[.t.][index[.t.]],
+            -- set the sensor at the next sb active
+            sbSensor'[.sb.] = active
+         )
+ 
+         [=]
+ 
+         ([=] t : TrainID_prime, sb : SwitchboxID_prime, i1, i2: SbIndex :-
+          [move_double_to_single]
+            i1 ~= i2 /\
+            -- is in double position
+            hdPos[.t.] ~= tlPos[.t.] /\
+            -- the train's next switchbox
+            sb = nextSb[.t.] /\
+            -- find the indices in sbSegments corresponding to the segments equal to the train's hd and tl position
+            sbSegments[.sb.][i1] = hdPos[.t.] /\
+            sbSegments[.sb.][i2] = tlPos[.t.]
+            ==>
+            -- update the tail of the train to the same position as the front of the train
+            tlPos'[.t.] = hdPos[.t.],
+            -- set the next switchbox by using the index var of the train, which points to the next
+            nextSb'[.t.] = switchboxes[.t.][index[.t.]],
+            -- update index var as we have moved one full segment forward
+            index'[.t.] = index[.t.] + 1,
+            -- move the reservation of the current segment to index 0 and delete the other reservations
+            tNextSbRes'[.t.][0] = tNextSbRes[.t.][1],
+            tNextSbRes'[.t.][1] = seg_none,
+            tNextNextSbRes'[.t.] = seg_none,
+            -- delete the lock at the sb just passed
+            tNextLocked'[.t.] = false,
+            -- set sensor passive
+            sbSensor'[.sb.] = passive,
+            -- remove the sb's reservations at the indices found in the guard (train's head and tail pos)
+            sbReservations'[.sb.][i1] = t_none,
+            sbReservations'[.sb.][i2] = t_none,
+            -- remove the lock
+            sbLock'[.sb.] = t_none
+         )
+        )
+
+    end
+
+    ltl_assertion
+      /* LTL ASSERTIONS */
+      [no_collide] TS |- (all tid1, tid2 : TrainID_prime :-
+                            G(tid1 ~= tid2 => no_collide(hdPos[.tid1.], tlPos[.tid1.], hdPos[.tid2.], tlPos[.tid2.]))),
+
+      [no_derail] TS |- (all t : TrainID_prime, sb : SwitchboxID_prime :-
+                            G(sb = nextSb[.t.] => no_derail(hdPos[.t.], tlPos[.t.], sbConnection[.sb.])))
+
+  end

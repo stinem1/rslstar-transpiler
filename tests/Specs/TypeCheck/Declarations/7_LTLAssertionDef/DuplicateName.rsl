@@ -1,0 +1,9 @@
+scheme DuplicateName =
+    class
+        transition_system [TS]
+        end
+
+        ltl_assertion
+            [a1] TS |- true,
+            [a1] TS |- false
+    end

@@ -1,0 +1,5 @@
+scheme Distinct_Variant =
+    class
+        type
+            T1 == x1 | x1
+    end

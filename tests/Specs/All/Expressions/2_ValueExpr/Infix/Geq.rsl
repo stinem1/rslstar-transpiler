@@ -1,0 +1,4 @@
+scheme Geq =
+    class
+        value x: Bool = 1 >= 1
+    end

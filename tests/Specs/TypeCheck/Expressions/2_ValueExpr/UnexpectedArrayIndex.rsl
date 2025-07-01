@@ -1,0 +1,6 @@
+scheme UnexpectedArrayIndex =
+    class
+        value
+            x: array Int of Int = {. 1 .},
+            y: Int = x[true]
+    end

@@ -1,0 +1,24 @@
+scheme Multi =
+    class
+        type
+            T1 == x1 | x2 | x3
+        value
+            x : Int
+        value
+            y : Int = 1
+        value
+            f : Int -> Int
+            f(x) is x
+        value
+            f1 : Int >< Int -> Int
+            f1(x, y) is x + y
+        value
+            z[t1: T1] : Bool
+        value
+            w[t1: T1, t2: T1] : Int
+        axiom
+            x = 2,
+            all x, y : T1 :- w[.x, y.] = 2,
+            all x : T1 :- z[.x.] = true
+
+    end

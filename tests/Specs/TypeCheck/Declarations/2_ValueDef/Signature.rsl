@@ -1,0 +1,6 @@
+scheme Signature = 
+    class
+        value
+            f : Int -> Int
+            g(x) is x
+    end

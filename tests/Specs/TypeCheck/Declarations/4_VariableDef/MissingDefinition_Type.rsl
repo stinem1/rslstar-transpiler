@@ -1,0 +1,7 @@
+scheme MissingDefinition_Type =
+    class
+        transition_system [TS]
+            variable
+                x: A
+        end
+    end

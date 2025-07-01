@@ -1,0 +1,5 @@
+scheme MissingDisambiguation =
+    class
+        value
+            x: Int = let y = {..} in y end
+    end

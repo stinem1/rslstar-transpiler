@@ -1,0 +1,7 @@
+scheme Multi =
+    class
+        axiom
+            true
+        axiom
+            [name] true
+    end

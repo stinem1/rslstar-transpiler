@@ -1,0 +1,5 @@
+scheme EmptyGeneric =
+    class
+        value
+            x[t: {| i : Int :- i >= 0 /\ i < 0 |}] : Int
+    end

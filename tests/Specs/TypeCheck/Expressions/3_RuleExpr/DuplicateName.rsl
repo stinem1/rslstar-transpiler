@@ -1,0 +1,12 @@
+scheme DuplicateName =
+    class
+        transition_system [TS]
+            variable
+                x: Int
+
+            transition_rules
+                [r1] true ==> x' = 1 
+                [=] 
+                [r1] true ==> x' = 2
+        end
+    end

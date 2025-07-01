@@ -1,0 +1,18 @@
+scheme Guard =
+    class
+        type
+            Range = {| i : Int :- i >= 0 /\ i < 4 |}
+
+        transition_system [TS]
+            variable
+                x[t : Range]: Bool
+
+            init_constraint
+                all y : Range :- x[.y.] = true
+
+            transition_rules
+                x[.1.] /\ true = true 
+                ==> 
+                x'[.1.] = false
+        end
+    end

@@ -1,0 +1,5 @@
+scheme ArrayArrayIndex =
+    class
+        type
+            T = array array Int of Int of Int
+    end

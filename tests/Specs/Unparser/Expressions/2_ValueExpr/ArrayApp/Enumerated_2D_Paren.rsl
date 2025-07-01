@@ -1,0 +1,5 @@
+scheme Enumerated_2D_Paren =
+    class
+        value
+            x : Int = ({. {. 1,2,3 .} .}[0])[2]
+    end

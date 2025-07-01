@@ -1,0 +1,5 @@
+scheme Digit =
+    class
+        value
+            x : Int = 123
+    end

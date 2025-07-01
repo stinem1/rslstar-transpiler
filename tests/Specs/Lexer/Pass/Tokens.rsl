@@ -1,0 +1,31 @@
+Bool Int all array axiom
+class else end exists if
+in init_constraint is let
+ltl_assertion of scheme then
+transition_rule transition_system
+type value variable
+
+=> \/ /\ ~
+U G F X [=] [>]
+= ~= > < >= <=
++ - \ * /
+
+-\\ :- == |-
+==> >< -> | : ,
+
+[ ] [. .] ( ) {| |} {. .}
+
+true false 12143253
+anId
+anId2
+anotherId_
+yet_AnotherId_123
+
+-- line comment
+
+/**
+* Multiline
+* Comment
+**/
+
+/* ********* / / / / / / */

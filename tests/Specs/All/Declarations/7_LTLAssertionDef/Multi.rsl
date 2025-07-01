@@ -1,0 +1,10 @@
+scheme Multi =
+    class
+        transition_system [TS]
+        end
+
+        ltl_assertion
+            [name1] TS |- true
+        ltl_assertion
+            [name2] TS |- false
+    end

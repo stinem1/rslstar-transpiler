@@ -1,0 +1,8 @@
+scheme Dup_Ax =
+    class
+        value
+            x : Int
+        axiom
+            x = 1,
+            x = 2
+    end

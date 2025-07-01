@@ -1,0 +1,7 @@
+scheme EffectExpr_Value =
+    class
+        transition_system [TS]
+            transition_rules
+                true ==> true
+        end
+    end

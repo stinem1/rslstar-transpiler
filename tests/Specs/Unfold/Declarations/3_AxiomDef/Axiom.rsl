@@ -1,0 +1,5 @@
+scheme Axiom =
+    class
+        axiom
+            true
+    end

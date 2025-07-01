@@ -1,0 +1,5 @@
+scheme Array =
+    class
+        type
+            T = array Int of Int
+    end

@@ -1,0 +1,6 @@
+scheme UnexpectedArgumentGeneric =
+    class
+        value
+            x [t1: Int]: Int,
+            y: Int = x[.1,2.]
+    end

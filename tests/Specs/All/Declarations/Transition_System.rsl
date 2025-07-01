@@ -1,0 +1,6 @@
+scheme Transition_System =
+    class
+        transition_system [TS]
+        
+        end
+    end

@@ -1,0 +1,13 @@
+scheme Single =
+    class
+        transition_system [TS]
+            variable
+                x : Int
+
+            init_constraint
+                x = 2
+
+            transition_rules
+                true ==> x' = 1
+        end
+    end

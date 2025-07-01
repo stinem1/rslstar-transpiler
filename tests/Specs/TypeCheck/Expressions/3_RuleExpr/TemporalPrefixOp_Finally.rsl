@@ -1,0 +1,10 @@
+scheme TemporalPrefixOp_Finally =
+    class
+        transition_system [TS]
+            variable
+                x: Int
+
+            transition_rules
+                F true ==> x' = 1
+        end
+    end

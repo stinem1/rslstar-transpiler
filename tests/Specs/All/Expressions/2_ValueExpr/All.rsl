@@ -1,0 +1,7 @@
+scheme All =
+    class
+        type
+            Range = {| i : Int :- i >= 0 /\ i < 3 |}
+
+        value b : Bool = all x : Range :- x = 1
+    end

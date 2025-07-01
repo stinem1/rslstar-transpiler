@@ -1,0 +1,5 @@
+scheme InCompatibleIf =
+    class
+        value
+            x: Bool = if true then 1 else false end
+    end

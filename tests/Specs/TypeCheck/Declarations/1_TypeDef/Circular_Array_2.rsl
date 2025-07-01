@@ -1,0 +1,5 @@
+scheme Circular_Array =
+    class
+        type
+            A = array Int of A
+    end

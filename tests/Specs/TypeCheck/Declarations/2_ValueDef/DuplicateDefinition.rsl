@@ -1,0 +1,6 @@
+scheme DuplicateDefinition =
+    class
+        value
+            x: Int = 1,
+            x: Int = 2
+    end

@@ -1,0 +1,7 @@
+scheme False =
+    class
+        transition_system [TS]
+            init_constraint
+                false
+        end
+    end

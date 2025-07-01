@@ -1,0 +1,6 @@
+scheme Circular_Subtype =
+    class
+        type
+            A = {| x : A :- true |}
+    end
+

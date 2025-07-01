@@ -1,0 +1,5 @@
+scheme Sort =
+    class
+        type
+            S
+    end

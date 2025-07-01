@@ -1,0 +1,25 @@
+scheme Subst_Rule_Quantifier =
+    class
+        type
+            T == t1 | t2,
+            R = {| i : Int :- i >= 0 /\ i < 2 |}
+
+        transition_system [TS]
+            variable
+                x[t : T, r: R] : Bool
+
+            init_constraint
+                all t : T, r : R :- x[.t, r.] = true
+
+            transition_rules
+                x[.t1, 1.] /\ true = true 
+                ==> 
+                x'[.t2, 1.] = false
+                [=]
+                ([=] t : T, t1 : R :- 
+                    x[.t, 1.] = false
+                    ==>
+                    x'[.t, t1.] = true
+                )
+        end
+    end

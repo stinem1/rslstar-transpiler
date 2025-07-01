@@ -1,0 +1,5 @@
+scheme InvalidRange =
+    class
+        type
+            Range = {| i : Int :- 0 <= i /\ i < 3 |}
+    end

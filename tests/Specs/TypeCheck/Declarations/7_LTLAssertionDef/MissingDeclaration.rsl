@@ -1,0 +1,5 @@
+scheme MissingDeclaration =
+    class
+        ltl_assertion
+            [name] TS |- true 
+    end

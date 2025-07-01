@@ -1,0 +1,5 @@
+scheme Quantifier_Distinct =
+    class
+        value
+            x: Bool = all x: Int, x: Int :- x = x
+    end

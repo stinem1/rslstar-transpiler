@@ -1,0 +1,21 @@
+scheme Transition_System_Decs =
+    class
+        type
+            T1 == x1 | x2 | x3
+
+        transition_system [TS]
+            variable
+                x : Int,
+                z[t1: T1] : Int,
+                w[t1: T1, t2: T1] : Int
+            
+            init_constraint
+                x = 2,
+                all x : T1 :- z[.x.] = 1,
+                all x, y : T1 :- w[.x, y.] = 2
+
+            transition_rules
+                true ==> x' = 1
+            
+        end
+    end

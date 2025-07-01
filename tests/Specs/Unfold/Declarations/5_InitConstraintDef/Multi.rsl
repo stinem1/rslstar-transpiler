@@ -1,0 +1,9 @@
+scheme Multi =
+    class
+        transition_system [TS]
+            init_constraint
+                true
+            init_constraint
+                false
+        end
+    end

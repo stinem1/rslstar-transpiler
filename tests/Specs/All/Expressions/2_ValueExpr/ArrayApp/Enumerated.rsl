@@ -1,0 +1,5 @@
+scheme Enumerated =
+    class
+        value
+            x : Int = {. 1,2,3 .}[1]
+    end

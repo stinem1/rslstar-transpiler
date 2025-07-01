@@ -1,0 +1,5 @@
+scheme Abbreviation =
+    class
+        type
+            T = Int
+    end

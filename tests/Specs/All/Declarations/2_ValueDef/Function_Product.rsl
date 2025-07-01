@@ -1,0 +1,6 @@
+scheme Function_Product =
+    class
+        value
+            f1 : Int >< Int -> Int
+            f1(x, y) is x + y
+    end

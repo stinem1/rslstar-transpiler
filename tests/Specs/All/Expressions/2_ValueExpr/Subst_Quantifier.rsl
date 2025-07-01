@@ -1,0 +1,11 @@
+scheme Subst_Quantifier =
+    class
+        type
+            T == t1 | t2,
+            R = {| i : Int :- i >= 0 /\ i < 2 |}
+        value
+            x[t : T, r: R] : Bool,
+            y : Bool = all t: T, t1 : R :- x[.t, t1.]
+        axiom
+            all t : T, r : R :- x[.t, r.] = true
+    end

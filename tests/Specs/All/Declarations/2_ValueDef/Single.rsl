@@ -1,0 +1,19 @@
+scheme Single =
+    class
+        type
+            T1 == x1 | x2 | x3
+        value
+            x : Int,
+            y : Int = 1,
+            f : Int -> Int
+            f(x) is x,
+            f1 : Int >< Int -> Int
+            f1(x, y) is x + y,
+            z[t1: T1] : Bool,
+            w[t1: T1, t2: T1] : Int
+        axiom
+            x = 2,
+            all x, y : T1 :- w[.x, y.] = 2,
+            all x : T1 :- z[.x.] = true
+
+    end

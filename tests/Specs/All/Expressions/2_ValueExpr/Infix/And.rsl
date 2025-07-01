@@ -1,0 +1,4 @@
+scheme And =
+    class
+        value x: Bool = true /\ true
+    end

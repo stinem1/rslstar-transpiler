@@ -1,0 +1,5 @@
+scheme Disambiguation =
+    class
+        value 
+            x : Int = (1 : Int)
+    end

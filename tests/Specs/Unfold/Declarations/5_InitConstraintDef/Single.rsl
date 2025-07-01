@@ -1,0 +1,8 @@
+scheme Single =
+    class
+        transition_system [TS]
+            init_constraint
+                true,
+                false
+        end
+    end

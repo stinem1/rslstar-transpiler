@@ -1,0 +1,7 @@
+scheme Id =
+    class
+        value
+            f : Int -> Int
+            f(x) is x,
+            x : Int = f(x)
+    end

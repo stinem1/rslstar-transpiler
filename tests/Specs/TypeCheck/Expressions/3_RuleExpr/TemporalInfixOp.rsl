@@ -1,0 +1,10 @@
+scheme TemporalInfixOp =
+    class
+        transition_system [TS]
+            variable
+                x: Int
+
+            transition_rules
+                true U true ==> x' = 1
+        end
+    end

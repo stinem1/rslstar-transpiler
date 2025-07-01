@@ -1,0 +1,5 @@
+scheme TInt =
+    class
+        type
+            T = Int
+    end

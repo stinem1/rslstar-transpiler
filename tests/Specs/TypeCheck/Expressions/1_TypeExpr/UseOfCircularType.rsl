@@ -1,0 +1,9 @@
+scheme UseOfCircularType =
+    class
+        type
+            A = B,
+            B = A
+
+        value
+            x : A = 1
+    end
